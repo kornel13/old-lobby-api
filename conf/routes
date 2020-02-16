@@ -1,0 +1,15 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+GET     /                           controllers.HomeController.index
+GET     /user                       controllers.HomeController.listUsers
+POST    /user                       controllers.HomeController.addUser
+
+GET     /ws                         controllers.HomeController.ws
+
+# Get evolution script based on repositories
+GET     /evolution                 controllers.HomeController.evolution
+
+# Map static resources from the /public folder to the /assets URL path
+GET     /assets/*file               controllers.Assets.at(path="/public", file)
