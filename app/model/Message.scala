@@ -12,6 +12,7 @@ object Message {
 //Authentication model
 final case class login(username: String, password: String) extends Message
 case object login_failed extends Message
+case object already_logged extends Message
 final case class login_successful(user_type: String) extends Message
 
 //Pinging model

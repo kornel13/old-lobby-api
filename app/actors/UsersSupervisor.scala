@@ -1,17 +1,14 @@
 package actors
 
-import akka.NotUsed
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, OneForOneStrategy, PoisonPill, Props, Status, SupervisorStrategy, Terminated}
-import akka.pattern.{ask, pipe}
-import akka.stream.scaladsl._
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Status}
 import akka.event.LoggingReceive
+import akka.stream.scaladsl._
 import akka.stream.{CompletionStrategy, Materializer, OverflowStrategy}
 import akka.util.Timeout
 import javax.inject.{Inject, Named}
 import model.Message
 import play.api.Configuration
 import play.api.libs.concurrent.InjectedActorSupport
-import play.api.libs.streams.ActorFlow
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -20,10 +17,7 @@ object UsersSupervisor {
 
   case class Create(id: String)
 
-  case object Broadcast
-
-  case object RegisterActor
-
+  final case class UpdateNotification(update: Message)
 }
 
 class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef,
@@ -46,7 +40,7 @@ class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef,
       println(context.children.map(_.path.toString).mkString("\n"))
       sender() ! flow
 
-    case Broadcast =>
+    case UpdateNotification(update) => context.children.foreach(_ ! UserActor.SendUpdateToSocket(update))
   }
 
   private def customActorRefFlow[In, Out](actorName: String,

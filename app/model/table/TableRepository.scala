@@ -3,6 +3,7 @@ package model.table
 import javax.inject.{Inject, Singleton}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
+import slick.sql.SqlProfile.ColumnOption.SqlType
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,7 +17,7 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
   import profile.api._
 
   protected class TableDb(tag: Tag) extends Table[TableModelDb](tag, "TABLE") {
-    def primaryKey = column[Long]("PRIMARY_KEY", O.PrimaryKey, O.AutoInc)
+    def primaryKey = column[Long]("PRIMARY_KEY", SqlType("SERIAL"),  O.PrimaryKey, O.AutoInc)
 
     def id = column[Long]("ID")
 
@@ -35,7 +36,7 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
   def dropSchema: String = tableQuery.schema.dropIfExistsStatements.mkString("\n")
 
 
-  def add(table: TableModelDb):Future[Int] = db.run(tableQuery += table)
+  def add(table: TableModelDb):Future[Int] = {println(s"Im about to add ${table}"); println((tableQuery += table).statements.mkString(" ")) ;  db.run(tableQuery += table).map(xx =>{ println("Added 1"); xx})}
 
   def remove(id: Long): Future[Int] = db.run(tableQuery.filter(_.id === id).delete)
 

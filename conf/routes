@@ -5,6 +5,13 @@
 GET     /                           controllers.HomeController.index
 GET     /user                       controllers.HomeController.listUsers
 POST    /user                       controllers.HomeController.addUser
+DELETE  /user                       controllers.HomeController.removeUser
+
+# DEBUG
+GET     /table                      controllers.HomeController.listTables
+POST    /table                      controllers.HomeController.addTable
+DELETE  /table                      controllers.HomeController.removeTable
+PATCH   /table                      controllers.HomeController.updateTable
 
 GET     /ws                         controllers.HomeController.ws
 

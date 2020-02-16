@@ -31,7 +31,7 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
   def createSchema: String = tableQuery.schema.createIfNotExistsStatements.mkString("\n")
   def dropSchema: String = tableQuery.schema.dropIfExistsStatements.mkString("\n")
 
-  def getUser(userName: String): Future[Option[UserModelDb]] = db.run(tableQuery.result.headOption)
+  def getUser(userName: String): Future[Option[UserModelDb]] = db.run(tableQuery.filter(_.userName === userName).result.headOption)
 
   def listUsers: Future[Seq[UserModelDb]] = db.run(tableQuery.result)
 
