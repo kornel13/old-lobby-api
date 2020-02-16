@@ -97,21 +97,27 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef)
       val resultF = (dbActorRef ? AddTable(table)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(table_added(after_id, table))
-        case OperationFailed(throwable) => log.error(s"Couldn't add a table: ${throwable.getMessage}")
+        case OperationFailed(throwable) =>
+          log.error(s"Couldn't add a table: ${throwable.getMessage}")
+          wsActorRef ! addition_failed(table.id)
       }
 
     case update_table(table) =>
       val resultF = (dbActorRef ? UpdateTable(table)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(update_table(table))
-        case OperationFailed(throwable) => log.error(s"Couldn't add a table: ${throwable.getMessage}")
+        case OperationFailed(throwable) =>
+          log.error(s"Couldn't update a table: ${throwable.getMessage}")
+          wsActorRef ! update_failed(table.id)
       }
 
     case remove_table(id) =>
       val resultF = (dbActorRef ? RemoveTable(id)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(remove_table(id))
-        case OperationFailed(throwable) => log.error(s"Couldn't add a table: ${throwable.getMessage}")
+        case OperationFailed(throwable) =>
+          log.error(s"Couldn't remove a table: ${throwable.getMessage}")
+          wsActorRef ! removal_failed(id)
       }
   }
 

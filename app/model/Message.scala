@@ -39,3 +39,4 @@ final case class remove_table(id: Long) extends Message
 
 final case class removal_failed(id: Long) extends Message
 final case class update_failed(id: Long) extends Message
+final case class addition_failed(id: Long) extends Message
