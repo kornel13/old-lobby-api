@@ -7,7 +7,7 @@ import akka.stream.scaladsl._
 import akka.event.LoggingReceive
 import akka.stream.{CompletionStrategy, Materializer, OverflowStrategy}
 import akka.util.Timeout
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 import model.Message
 import play.api.Configuration
 import play.api.libs.concurrent.InjectedActorSupport
@@ -26,7 +26,9 @@ object UsersSupervisor {
 
 }
 
-class UsersSupervisor @Inject()(configuration: Configuration)(implicit ec: ExecutionContext, mat: Materializer)
+class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef,
+                                configuration: Configuration)
+                               (implicit ec: ExecutionContext, mat: Materializer)
   extends Actor with InjectedActorSupport with ActorLogging {
 
   implicit val timeout: Timeout = Timeout(2.seconds)
@@ -39,7 +41,7 @@ class UsersSupervisor @Inject()(configuration: Configuration)(implicit ec: Execu
     case Create(id) =>
       val name = s"userActor-$id"
       log.info(s"Setting up an user actor $name")
-      val (flow, _) = customActorRefFlow(name, out => UserActor.props(id, out, self))
+      val (flow, _) = customActorRefFlow(name, out => UserActor.props(id, out, dbActor))
       //val flow = ActorFlow.actorRef[Message, Message](out => UserActor.props(id, out, self))
       println(context.children.map(_.path.toString).mkString("\n"))
       sender() ! flow
@@ -57,7 +59,9 @@ class UsersSupervisor @Inject()(configuration: Configuration)(implicit ec: Execu
       case akka.actor.Status.Success(_) => CompletionStrategy.draining
       case akka.actor.Status.Success => CompletionStrategy.draining
     }
-    val failureMatcher: PartialFunction[Any, Throwable] = { case akka.actor.Status.Failure(cause) => cause }
+    val failureMatcher: PartialFunction[Any, Throwable] = {
+      case akka.actor.Status.Failure(cause) => cause
+    }
 
 
     val (outActor, publisher) = Source
