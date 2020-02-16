@@ -24,9 +24,11 @@ resolvers in ThisBuild += Resolver.jcenterRepo
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
   .settings(
-    name := "Task",
+    name := "EvolutionGamingTest",
     version := "0.1",
     scalaVersion := "2.13.1",
+    maintainer := "Kornel Mrozek",
+    dockerExposedPorts in Docker := Seq(9000),
     libraryDependencies ++= Seq(
       guice,
       ws,
@@ -41,5 +43,8 @@ lazy val root = (project in file("."))
       "-deprecation",
       "-Xfatal-warnings",
       "-language:postfixOps"
+    ),
+    javaOptions in Universal ++= Seq(
+      "-Dpidfile.path=/dev/null"
     )
   )
