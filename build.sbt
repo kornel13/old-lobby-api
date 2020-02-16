@@ -2,6 +2,7 @@ import play.core.PlayVersion.akkaVersion
 
 val playJsonDerivedCodecs = "org.julienrf" %% "play-json-derived-codecs" % "6.0.0"
 val chimney = "io.scalaland" %% "chimney" % "0.3.2"
+val hasher = "com.outr" %% "hasher" % "1.2.2"
 
 val testKit = Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
@@ -17,6 +18,9 @@ val slick = Seq(
 
 val postgresDriver = "org.postgresql" % "postgresql" % "42.2.5"
 
+resolvers in ThisBuild += Resolver.bintrayRepo("lunaryorn", "maven")
+resolvers in ThisBuild += Resolver.jcenterRepo
+
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
   .settings(
@@ -28,7 +32,8 @@ lazy val root = (project in file("."))
       ws,
       playJsonDerivedCodecs,
       postgresDriver,
-      chimney
+      chimney,
+      hasher
     ) ++ testKit
       ++ slick,
     scalacOptions ++= Seq(

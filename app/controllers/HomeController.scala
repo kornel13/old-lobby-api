@@ -3,18 +3,17 @@ package controllers
 import actors._
 import akka.NotUsed
 import akka.actor.ActorRef
-import akka.stream.scaladsl._
-import akka.util.Timeout
 import akka.pattern._
 import akka.stream.Materializer
+import akka.stream.scaladsl._
+import akka.util.Timeout
 import javax.inject._
 import model._
-import model.user.{User, UserToAdd}
+import model.user.{User, UserToAddNotHashedPassword}
 import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc.WebSocket.MessageFlowTransformer
 import play.api.mvc._
-import slick.jdbc.JdbcBackend.Database
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,8 +39,9 @@ class HomeController @Inject()(
     (dbActor ? DBActor.ListUsers).mapTo[Seq[User]].map(users => Ok(Json.toJson(users)))
   }
 
-  def addUser = Action.async(parse.json[UserToAdd]) { implicit req: Request[UserToAdd] =>
-    (dbActor ? DBActor.AddUser(req.body)).mapTo[Int].map(_ => Ok("Added"))
+  def addUser = Action.async(parse.json[UserToAddNotHashedPassword]) { implicit req: Request[UserToAddNotHashedPassword] =>
+    import model.user.UserMapper.toHashedPassword
+    (dbActor ? DBActor.AddUser(toHashedPassword(req.body))).mapTo[Int].map(_ => Ok("Added"))
   }
 
   def evolution = Action { _ => Ok(evolutionRepository.getEvolutionSchema)}

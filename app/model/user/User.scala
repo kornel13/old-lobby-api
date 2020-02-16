@@ -16,6 +16,11 @@ object User {
   implicit val format: Format[User] = Json.format
 }
 
+case class UserToAddNotHashedPassword(userName: String, passwordNotHashed: String, role: UserRole = CommonUser)
+object UserToAddNotHashedPassword {
+  implicit val format: Format[UserToAddNotHashedPassword] = Json.format
+}
+
 case class UserToAdd(userName: String, passwordHash: String, role: UserRole = CommonUser)
 object UserToAdd {
   implicit val format: Format[UserToAdd] = Json.format
@@ -40,4 +45,8 @@ object UserMapper {
     case "user" => CommonUser
     case "admin" => Admin
   }).transform
+
+  def toHashedPassword(model: UserToAddNotHashedPassword): UserToAdd = model.into[UserToAdd]
+    .withFieldComputed(_.passwordHash, m => utils.PasswordHasher.hashPassword(m.userName, m.passwordNotHashed))
+    .transform
 }

@@ -13,6 +13,7 @@ class UserActor (id: String, wsActorRef: ActorRef, supervisorActorRef: ActorRef)
     case ping(seqNr) => wsActorRef ! pong(seqNr)
     case login(username, password) => wsActorRef ! login_failed
     case _: subscribe_table.type => wsActorRef ! pong(1)
+    case _: unsubscribe_table.type => wsActorRef ! pong(1)
     case add_table(after_id, table) => wsActorRef ! not_authorized
     case update_table(table) => wsActorRef ! not_authorized
     case remove_table(id) => wsActorRef ! not_authorized
@@ -37,6 +38,5 @@ class UserActor (id: String, wsActorRef: ActorRef, supervisorActorRef: ActorRef)
 
 object UserActor {
   def props(id: String, wsActorRef: ActorRef, supervisorActorRef: ActorRef) = Props(new UserActor(id, wsActorRef, supervisorActorRef))
-
 
 }

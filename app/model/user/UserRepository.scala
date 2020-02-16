@@ -31,13 +31,12 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
   def createSchema: String = tableQuery.schema.createIfNotExistsStatements.mkString("\n")
   def dropSchema: String = tableQuery.schema.dropIfExistsStatements.mkString("\n")
 
+  def getUser(userName: String): Future[Option[UserModelDb]] = db.run(tableQuery.result.headOption)
+
   def listUsers: Future[Seq[UserModelDb]] = db.run(tableQuery.result)
 
   def addUser(user: UserModelDb):Future[Int] = db.run(tableQuery += user)
 
   def removeUser(username: String): Future[Int] = db.run(tableQuery.filter(_.userName === username).delete)
-
-  //def checkUserCredentials(userName: String, passwordHash: String) =
-
 
 }
