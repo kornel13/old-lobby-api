@@ -20,10 +20,12 @@ object UsersSupervisor {
   final case class UpdateNotification(update: Message)
 }
 
-class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef,
-                                configuration: Configuration)
-                               (implicit ec: ExecutionContext, mat: Materializer)
-  extends Actor with InjectedActorSupport with ActorLogging {
+class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef, configuration: Configuration)(
+  implicit ec: ExecutionContext,
+  mat: Materializer
+) extends Actor
+    with InjectedActorSupport
+    with ActorLogging {
 
   implicit val timeout: Timeout = Timeout(2.seconds)
 
@@ -43,40 +45,37 @@ class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef,
     case UpdateNotification(update) => context.children.foreach(_ ! UserActor.SendUpdateToSocket(update))
   }
 
-  private def customActorRefFlow[In, Out](actorName: String,
-                                          props: ActorRef => Props,
-                                          bufferSize: Int = 16,
-                                          overflowStrategy: OverflowStrategy = OverflowStrategy.dropNew
-                                         )(implicit factory: ActorRefFactory, mat: Materializer): (Flow[In, Out, _], ActorRef) = {
+  private def customActorRefFlow[In, Out](
+    actorName: String,
+    props: ActorRef => Props,
+    bufferSize: Int = 16,
+    overflowStrategy: OverflowStrategy = OverflowStrategy.dropNew
+  )(implicit factory: ActorRefFactory, mat: Materializer): (Flow[In, Out, _], ActorRef) = {
     val completionMatcher: PartialFunction[Any, CompletionStrategy] = {
       case akka.actor.Status.Success(s: CompletionStrategy) => s
-      case akka.actor.Status.Success(_) => CompletionStrategy.draining
-      case akka.actor.Status.Success => CompletionStrategy.draining
+      case akka.actor.Status.Success(_)                     => CompletionStrategy.draining
+      case akka.actor.Status.Success                        => CompletionStrategy.draining
     }
     val failureMatcher: PartialFunction[Any, Throwable] = {
       case akka.actor.Status.Failure(cause) => cause
     }
 
-
     val (outActor, publisher) = Source
-      .actorRef[Out](
-        completionMatcher,
-        failureMatcher,
-        bufferSize,
-        overflowStrategy)
+      .actorRef[Out](completionMatcher, failureMatcher, bufferSize, overflowStrategy)
       .toMat(Sink.asPublisher(false))(Keep.both)
       .run()
 
     val childActorRef = context.actorOf(props(outActor), actorName)
 
-    (Flow.fromSinkAndSource(
-      Sink.actorRef(
-        ref = childActorRef,
-        onCompleteMessage = Status.Success(()),
-        onFailureMessage = throwable => Status.Failure(throwable)
+    (
+      Flow.fromSinkAndSource(
+        Sink.actorRef(
+          ref = childActorRef,
+          onCompleteMessage = Status.Success(()),
+          onFailureMessage = throwable => Status.Failure(throwable)
+        ),
+        Source.fromPublisher(publisher)
       ),
-      Source.fromPublisher(publisher)
-    ),
       childActorRef
     )
   }

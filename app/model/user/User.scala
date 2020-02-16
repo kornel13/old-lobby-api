@@ -35,24 +35,29 @@ object UserToRemove {
   implicit val format: Format[UserToRemove] = Json.format
 }
 
-
 object UserMapper {
   def toDb(model: UserToAdd): UserModelDb =
-    model.into[UserModelDb]
+    model
+      .into[UserModelDb]
       .withFieldComputed(_.role, _.role match {
-      case CommonUser => CommonUser.toString
-      case Admin => Admin.toString
-    })
-    .withFieldConst(_.subscription, false)
+        case CommonUser => CommonUser.toString
+        case Admin      => Admin.toString
+      })
+      .withFieldConst(_.subscription, false)
       .transform
 
-  def toUser(model: UserModelDb): User = model.into[User]
-    .withFieldComputed(_.role, _.role match {
-    case "user" => CommonUser
-    case "admin" => Admin
-  }).transform
+  def toUser(model: UserModelDb): User =
+    model
+      .into[User]
+      .withFieldComputed(_.role, _.role match {
+        case "user"  => CommonUser
+        case "admin" => Admin
+      })
+      .transform
 
-  def toHashedPassword(model: UserToAddNotHashedPassword): UserToAdd = model.into[UserToAdd]
-    .withFieldComputed(_.passwordHash, m => utils.PasswordHasher.hashPassword(m.userName, m.passwordNotHashed))
-    .transform
+  def toHashedPassword(model: UserToAddNotHashedPassword): UserToAdd =
+    model
+      .into[UserToAdd]
+      .withFieldComputed(_.passwordHash, m => utils.PasswordHasher.hashPassword(m.userName, m.passwordNotHashed))
+      .transform
 }

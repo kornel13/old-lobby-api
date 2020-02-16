@@ -8,4 +8,3 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActor[DBActor]("databaseActor")
   }
 }
-

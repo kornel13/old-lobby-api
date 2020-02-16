@@ -40,7 +40,8 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
 
   def getUser(userName: String): Future[Option[UserModelDb]] = db.run(findUserQuery(userName).result.headOption)
 
-  def subscribe(userName: String, subscription: Boolean): Future[Int] = db.run(findUserQuery(userName).map(_.subscription).update(subscription))
+  def subscribe(userName: String, subscription: Boolean): Future[Int] =
+    db.run(findUserQuery(userName).map(_.subscription).update(subscription))
 
   def listUsers: Future[Seq[UserModelDb]] = db.run(tableQuery.result)
 

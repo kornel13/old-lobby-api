@@ -10,8 +10,7 @@ import model.user.{Admin, CommonUser, User}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef)
-  extends Actor with ActorLogging {
+class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef) extends Actor with ActorLogging {
 
   import model._
   import DBActor._
@@ -26,22 +25,21 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef)
   }
 
   private def anonymousUserReceive: Receive =
-    pingPongReceive orElse
-      loggingReceive orElse
-      unauthorizedReceive
+    pingPongReceive.orElse(loggingReceive).orElse(unauthorizedReceive)
 
   private def adminReceive(user: User): Receive =
-    pingPongReceive orElse
-      alreadyLoggedReceive orElse
-      subscriptionReceive(user) orElse
-      updateReceive(user) orElse
-      tablesModificationReceive
+    pingPongReceive
+      .orElse(alreadyLoggedReceive)
+      .orElse(subscriptionReceive(user))
+      .orElse(updateReceive(user))
+      .orElse(tablesModificationReceive)
 
-  private def loggedUserReceive(user: User): Receive = pingPongReceive orElse
-    alreadyLoggedReceive orElse
-    subscriptionReceive(user) orElse
-    updateReceive(user) orElse
-    unauthorizedReceive
+  private def loggedUserReceive(user: User): Receive =
+    pingPongReceive
+      .orElse(alreadyLoggedReceive)
+      .orElse(subscriptionReceive(user))
+      .orElse(updateReceive(user))
+      .orElse(unauthorizedReceive)
 
   private def subscriptionReceive(user: User): Receive = {
     case _: subscribe_tables.type =>
@@ -56,8 +54,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef)
     case _: unsubscribe_tables.type =>
       if (!user.subscription) {
         wsActorRef ! already_unsubscribed
-      }
-      else {
+      } else {
         dbActorRef ! Unsubscribe(user.userName)
         setBehavior(user.copy(subscription = false))
       }
@@ -123,12 +120,13 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef)
 
   private def setBehavior(user: User): Unit = user.role match {
     case CommonUser => context.become(loggedUserReceive(user))
-    case Admin => context.become(adminReceive(user))
+    case Admin      => context.become(adminReceive(user))
   }
 }
 
 object UserActor {
-  def props(id: String, wsActorRef: ActorRef, supervisorActorRef: ActorRef): Props = Props(new UserActor(id, wsActorRef, supervisorActorRef))
+  def props(id: String, wsActorRef: ActorRef, supervisorActorRef: ActorRef): Props =
+    Props(new UserActor(id, wsActorRef, supervisorActorRef))
 
   case class SendUpdateToSocket(update: Message)
 

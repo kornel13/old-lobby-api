@@ -20,12 +20,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class MainController @Inject()(
-                                @Named("usersSupervisor") userSupervisor: ActorRef,
-                                @Named("databaseActor") dbActor: ActorRef,
-                                evolutionRepository: EvolutionRepository,
-                                cc: ControllerComponents)
-                              (implicit ec: ExecutionContext, mat: Materializer)
-  extends AbstractController(cc) with SameOriginCheck {
+  @Named("usersSupervisor") userSupervisor: ActorRef,
+  @Named("databaseActor") dbActor: ActorRef,
+  evolutionRepository: EvolutionRepository,
+  cc: ControllerComponents
+)(implicit ec: ExecutionContext, mat: Materializer)
+    extends AbstractController(cc)
+    with SameOriginCheck {
 
   val logger = play.api.Logger(getClass)
 
@@ -40,48 +41,58 @@ class MainController @Inject()(
   }
 
   def addTable = Action.async(parse.json[model.Message]) { implicit req: Request[model.Message] =>
-    (dbActor ? DBActor.AddTable(req.body.asInstanceOf[model.add_table].table)).mapTo[DBActor.TableOperationResult].map(_ => Ok(s"Added ${req.body}"))
+    (dbActor ? DBActor.AddTable(req.body.asInstanceOf[model.add_table].table))
+      .mapTo[DBActor.TableOperationResult]
+      .map(_ => Ok(s"Added ${req.body}"))
   }
 
   def removeTable = Action.async(parse.json[model.Message]) { implicit req: Request[Message] =>
-    (dbActor ? DBActor.RemoveTable(req.body.asInstanceOf[model.remove_table].id)).mapTo[DBActor.TableOperationResult].map(_ => Ok(s"Removed ${req.body}"))
+    (dbActor ? DBActor.RemoveTable(req.body.asInstanceOf[model.remove_table].id))
+      .mapTo[DBActor.TableOperationResult]
+      .map(_ => Ok(s"Removed ${req.body}"))
   }
 
   def updateTable = Action.async(parse.json[model.Message]) { implicit req: Request[Message] =>
-    (dbActor ? DBActor.UpdateTable(req.body.asInstanceOf[model.update_table].table)).mapTo[DBActor.TableOperationResult].map(_ => Ok(s"Added ${req.body}"))
+    (dbActor ? DBActor.UpdateTable(req.body.asInstanceOf[model.update_table].table))
+      .mapTo[DBActor.TableOperationResult]
+      .map(_ => Ok(s"Added ${req.body}"))
   }
 
   ///////////////////////////////////////////
-
 
   def listUsers = Action.async { _ =>
     (dbActor ? DBActor.ListUsers).mapTo[Seq[User]].map(users => Ok(Json.toJson(users)))
   }
 
-  def addUser = Action.async(parse.json[UserToAddNotHashedPassword]) { implicit req: Request[UserToAddNotHashedPassword] =>
-    import model.user.UserMapper.toHashedPassword
-    (dbActor ? DBActor.AddUser(toHashedPassword(req.body))).mapTo[Int].map(_ => Ok(s"Added ${req.body}"))
+  def addUser = Action.async(parse.json[UserToAddNotHashedPassword]) {
+    implicit req: Request[UserToAddNotHashedPassword] =>
+      import model.user.UserMapper.toHashedPassword
+      (dbActor ? DBActor.AddUser(toHashedPassword(req.body))).mapTo[Int].map(_ => Ok(s"Added ${req.body}"))
   }
 
   def removeUser = Action.async(parse.json[UserToRemove]) { implicit req: Request[UserToRemove] =>
     (dbActor ? DBActor.RemoveUser(req.body)).mapTo[Int].map(_ => Ok(s"Removed ${req.body.userName}"))
   }
 
-  def evolution = Action { _ => Ok(evolutionRepository.getEvolutionSchema)}
+  def evolution = Action { _ =>
+    Ok(evolutionRepository.getEvolutionSchema)
+  }
 
   implicit val messageFlowTransformer = MessageFlowTransformer.jsonMessageFlowTransformer[Message, Message]
 
   def ws: WebSocket = WebSocket.acceptOrResult[Message, Message] {
     case rh /*if sameOriginCheck(rh)*/ =>
-      wsFutureFlow(rh).map { flow =>
-        Right(flow)
-      }.recover {
-        case e: Exception =>
-          logger.error("Cannot create websocket", e)
-          val jsError = Json.obj("error" -> "Cannot create websocket")
-          val result = InternalServerError(jsError)
-          Left(result)
-      }
+      wsFutureFlow(rh)
+        .map { flow =>
+          Right(flow)
+        }
+        .recover {
+          case e: Exception =>
+            logger.error("Cannot create websocket", e)
+            val jsError = Json.obj("error" -> "Cannot create websocket")
+            val result = InternalServerError(jsError)
+            Left(result)
+        }
 
     //    case rejected =>
     //      logger.error(s"Request ${rejected} failed same origin check")
@@ -109,7 +120,9 @@ trait SameOriginCheck {
         true
 
       case Some(badOrigin) =>
-        logger.error(s"originCheck: rejecting request because Origin header value ${badOrigin} is not in the same origin")
+        logger.error(
+          s"originCheck: rejecting request because Origin header value ${badOrigin} is not in the same origin"
+        )
         false
 
       case None =>

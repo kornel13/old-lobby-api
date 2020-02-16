@@ -14,7 +14,3 @@ object TableModelMapper {
 
   def toMsg(model: TableModelDb): TableModel = model.transformInto[TableModel]
 }
-
-
-
-

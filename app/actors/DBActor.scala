@@ -9,9 +9,10 @@ import play.api.libs.concurrent.InjectedActorSupport
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
 class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRepository)(implicit ec: ExecutionContext)
-  extends Actor with InjectedActorSupport with ActorLogging {
+    extends Actor
+    with InjectedActorSupport
+    with ActorLogging {
 
   import DBActor._
   import model.user.UserMapper
@@ -19,29 +20,33 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
 
   log.info("DBActor Created")
 
-  override def receive: Receive = userReceive orElse tableReceive
+  override def receive: Receive = userReceive.orElse(tableReceive)
 
   private def userReceive: Receive = {
-    case AuthenticateUser(userName, passwordHash) => pipeFuture(sender(),
-      userRepository.getUser(userName).map(
-        _.map(userModelDb => {
-          if (userModelDb.passwordHash == passwordHash)
-            UserAuthenticated(UserMapper.toUser(userModelDb))
-          else
-            UserInvalid
-        })
-          .getOrElse {
-            log.debug(s"Couldn't find $userName")
-            UserInvalid
-          }
+    case AuthenticateUser(userName, passwordHash) =>
+      pipeFuture(
+        sender(),
+        userRepository
+          .getUser(userName)
+          .map(
+            _.map(userModelDb => {
+              if (userModelDb.passwordHash == passwordHash)
+                UserAuthenticated(UserMapper.toUser(userModelDb))
+              else
+                UserInvalid
+            }).getOrElse {
+              log.debug(s"Couldn't find $userName")
+              UserInvalid
+            }
+          )
       )
-    )
-    case Subscribe(userName) => pipeFuture(sender(), {
-      for {
-        _ <- userRepository.subscribe(userName, subscription = true)
-        list <- tableRepository.list
-      } yield ListedTables(list.map(TableModelMapper.toMsg))
-    })
+    case Subscribe(userName) =>
+      pipeFuture(sender(), {
+        for {
+          _ <- userRepository.subscribe(userName, subscription = true)
+          list <- tableRepository.list
+        } yield ListedTables(list.map(TableModelMapper.toMsg))
+      })
 
     case Unsubscribe(userName) => userRepository.subscribe(userName, subscription = false)
 
@@ -57,17 +62,13 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
       log.info("Got list tables")
       pipeFuture(sender(), tableRepository.list.map(_.map(TableModelMapper.toMsg)))
 
-    case AddTable(tableModel) => pipeFuture(sender(),
-      handleDbResponse(tableRepository.add(TableModelMapper.toDb(tableModel)))
-    )
+    case AddTable(tableModel) =>
+      pipeFuture(sender(), handleDbResponse(tableRepository.add(TableModelMapper.toDb(tableModel))))
 
-    case RemoveTable(id) => pipeFuture(sender(),
-      handleDbResponse(tableRepository.remove(id))
-    )
+    case RemoveTable(id) => pipeFuture(sender(), handleDbResponse(tableRepository.remove(id)))
 
-    case UpdateTable(tableModel) => pipeFuture(sender(),
-      handleDbResponse(tableRepository.update(TableModelMapper.toDb(tableModel)))
-    )
+    case UpdateTable(tableModel) =>
+      pipeFuture(sender(), handleDbResponse(tableRepository.update(TableModelMapper.toDb(tableModel))))
   }
 
   private def pipeFuture[R](senderRef: ActorRef, future: => Future[R]) = {
@@ -75,12 +76,14 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
   }
 
   private def handleDbResponse(future: => Future[Int]): Future[TableOperationResult] = {
-    future.map {
-      case 1 => OperationSucceeded
-      case rows => OperationFailed(new Exception(s"Not expected rows abount updated [$rows]"))
-    }.recover {
-      case th: Throwable => OperationFailed(th)
-    }
+    future
+      .map {
+        case 1    => OperationSucceeded
+        case rows => OperationFailed(new Exception(s"Not expected rows abount updated [$rows]"))
+      }
+      .recover {
+        case th: Throwable => OperationFailed(th)
+      }
   }
 
 }
@@ -88,37 +91,25 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
 object DBActor {
 
   case object ListUsers
-
   final case class RemoveUser(userToRemove: UserToRemove)
-
   final case class AddUser(addUser: UserToAdd)
 
   final case class AuthenticateUser(userName: String, passwordHash: String)
-
   sealed trait AuthenticationResponse
-
   case object UserInvalid extends AuthenticationResponse
-
   final case class UserAuthenticated(user: User) extends AuthenticationResponse
 
   case class Subscribe(userName: String)
-
   case class Unsubscribe(userName: String)
 
   case object ListTables
-
   final case class ListedTables(tables: Seq[TableModel])
-
   final case class AddTable(tableModel: TableModel)
-
   final case class RemoveTable(id: Long)
-
   final case class UpdateTable(tableModel: TableModel)
 
   sealed trait TableOperationResult
-
   case object OperationSucceeded extends TableOperationResult
-
   final case class OperationFailed(throwable: Throwable) extends TableOperationResult
 
 }
