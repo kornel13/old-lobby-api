@@ -13,7 +13,7 @@ POST    /table                      controllers.HomeController.addTable
 DELETE  /table                      controllers.HomeController.removeTable
 PATCH   /table                      controllers.HomeController.updateTable
 
-GET     /ws                         controllers.HomeController.ws
+GET     /lobby-api                  controllers.HomeController.ws
 
 # Get evolution script based on repositories
 GET     /evolution                 controllers.HomeController.evolution

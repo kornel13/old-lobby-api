@@ -45,7 +45,6 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
       result <- if (tableExists) emptyAction else tableQuery += table
     } yield result
     action.transactionally
-    tableQuery += table
   }
 
   def remove(id: Long): Future[Int] = db.run(findTableQuery(id).delete)

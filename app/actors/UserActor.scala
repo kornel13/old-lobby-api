@@ -10,7 +10,7 @@ import model.user.{Admin, CommonUser, User}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
+class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef)
   extends Actor with ActorLogging {
 
   import model._
@@ -48,7 +48,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
       if (user.subscription)
         wsActorRef ! already_subscribed
       else {
-        val listedTablesF = (dBActor ? Subscribe(user.userName)).mapTo[ListedTables].map(tl => table_list(tl.tables))
+        val listedTablesF = (dbActorRef ? Subscribe(user.userName)).mapTo[ListedTables].map(tl => table_list(tl.tables))
         pipe(listedTablesF) to wsActorRef
         setBehavior(user.copy(subscription = true))
       }
@@ -58,7 +58,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
         wsActorRef ! already_unsubscribed
       }
       else {
-        dBActor ! Unsubscribe(user.userName)
+        dbActorRef ! Unsubscribe(user.userName)
         setBehavior(user.copy(subscription = false))
       }
   }
@@ -77,7 +77,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
 
   private def loggingReceive: Receive = {
     case login(username, password) =>
-      dBActor ! AuthenticateUser(username, utils.PasswordHasher.hashPassword(username, password))
+      dbActorRef ! AuthenticateUser(username, utils.PasswordHasher.hashPassword(username, password))
 
     case UserAuthenticated(user) =>
       wsActorRef ! login_successful(user.role.toString)
@@ -94,21 +94,21 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
 
   private def tablesModificationReceive: Receive = {
     case add_table(after_id, table) =>
-      val resultF = (dBActor ? AddTable(table)).mapTo[TableOperationResult]
+      val resultF = (dbActorRef ? AddTable(table)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(table_added(after_id, table))
         case OperationFailed(throwable) => log.error(s"Couldn't add a table: ${throwable.getMessage}")
       }
 
     case update_table(table) =>
-      val resultF = (dBActor ? UpdateTable(table)).mapTo[TableOperationResult]
+      val resultF = (dbActorRef ? UpdateTable(table)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(update_table(table))
         case OperationFailed(throwable) => log.error(s"Couldn't add a table: ${throwable.getMessage}")
       }
 
     case remove_table(id) =>
-      val resultF = (dBActor ? RemoveTable(id)).mapTo[TableOperationResult]
+      val resultF = (dbActorRef ? RemoveTable(id)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(remove_table(id))
         case OperationFailed(throwable) => log.error(s"Couldn't add a table: ${throwable.getMessage}")
