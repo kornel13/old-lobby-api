@@ -2,21 +2,21 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-GET     /                           controllers.HomeController.index
-GET     /user                       controllers.HomeController.listUsers
-POST    /user                       controllers.HomeController.addUser
-DELETE  /user                       controllers.HomeController.removeUser
+GET     /                           controllers.MainController.index
+GET     /user                       controllers.MainController.listUsers
+POST    /user                       controllers.MainController.addUser
+DELETE  /user                       controllers.MainController.removeUser
 
 # DEBUG
-GET     /table                      controllers.HomeController.listTables
-POST    /table                      controllers.HomeController.addTable
-DELETE  /table                      controllers.HomeController.removeTable
-PATCH   /table                      controllers.HomeController.updateTable
+GET     /table                      controllers.MainController.listTables
+POST    /table                      controllers.MainController.addTable
+DELETE  /table                      controllers.MainController.removeTable
+PATCH   /table                      controllers.MainController.updateTable
 
-GET     /lobby-api                  controllers.HomeController.ws
+GET     /lobby-api                  controllers.MainController.ws
 
 # Get evolution script based on repositories
-GET     /evolution                 controllers.HomeController.evolution
+GET     /evolution                 controllers.MainController.evolution
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)

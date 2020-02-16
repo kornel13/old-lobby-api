@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class HomeController @Inject()(
+class MainController @Inject()(
                                 @Named("usersSupervisor") userSupervisor: ActorRef,
                                 @Named("databaseActor") dbActor: ActorRef,
                                 evolutionRepository: EvolutionRepository,
