@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern._
 import akka.util.Timeout
 import model._
-import model.user.{Admin, CommonUser}
+import model.user.{Admin, CommonUser, User}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -21,31 +21,50 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
 
   override def receive: Receive = anonymousUserReceive
 
+  override def postStop(): Unit = {
+    log.info(s"Stopping actor $self")
+  }
+
   private def anonymousUserReceive: Receive =
     pingPongReceive orElse
       loggingReceive orElse
       unauthorizedReceive
 
-  private def adminReceive: Receive =
+  private def adminReceive(user: User): Receive =
     pingPongReceive orElse
       alreadyLoggedReceive orElse
-      subscriptionReceive orElse
-      updateReceive orElse
+      subscriptionReceive(user) orElse
+      updateReceive(user) orElse
       tablesModificationReceive
 
-  private def loggedUserReceive: Receive = pingPongReceive orElse
+  private def loggedUserReceive(user: User): Receive = pingPongReceive orElse
     alreadyLoggedReceive orElse
-    subscriptionReceive orElse
-    updateReceive orElse
+    subscriptionReceive(user) orElse
+    updateReceive(user) orElse
     unauthorizedReceive
 
-  private def subscriptionReceive: Receive = {
-    case _: subscribe_table.type => wsActorRef ! not_authorized
-    case _: unsubscribe_table.type => wsActorRef ! not_authorized
+  private def subscriptionReceive(user: User): Receive = {
+    case _: subscribe_tables.type =>
+      if (user.subscription)
+        wsActorRef ! already_subscribed
+      else {
+        val listedTablesF = (dBActor ? Subscribe(user.userName)).mapTo[ListedTables].map(tl => table_list(tl.tables))
+        pipe(listedTablesF) to wsActorRef
+        setBehavior(user.copy(subscription = true))
+      }
+
+    case _: unsubscribe_tables.type =>
+      if (!user.subscription) {
+        wsActorRef ! already_unsubscribed
+      }
+      else {
+        dBActor ! Unsubscribe(user.userName)
+        setBehavior(user.copy(subscription = false))
+      }
   }
 
-  private def updateReceive: Receive = {
-    case SendUpdateToSocket(update) => wsActorRef ! update
+  private def updateReceive(user: User): Receive = {
+    case SendUpdateToSocket(update) => if (user.subscription) wsActorRef ! update
   }
 
   private def pingPongReceive: Receive = {
@@ -62,11 +81,8 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
 
     case UserAuthenticated(user) =>
       wsActorRef ! login_successful(user.role.toString)
-      log.info(s"LOGGED as ${user.role}")
-      user.role match {
-        case CommonUser => context.become(loggedUserReceive)
-        case Admin => context.become(adminReceive)
-      }
+      log.info(s"LOGGED as $user")
+      setBehavior(user)
 
     case UserInvalid =>
       wsActorRef ! login_failed
@@ -78,7 +94,6 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
 
   private def tablesModificationReceive: Receive = {
     case add_table(after_id, table) =>
-      log.info(s"RECEIVED add_table $after_id $table")
       val resultF = (dBActor ? AddTable(table)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(table_added(after_id, table))
@@ -100,8 +115,9 @@ class UserActor(id: String, wsActorRef: ActorRef, dBActor: ActorRef)
       }
   }
 
-  override def postStop(): Unit = {
-    log.info(s"Stopping actor $self")
+  private def setBehavior(user: User): Unit = user.role match {
+    case CommonUser => context.become(loggedUserReceive(user))
+    case Admin => context.become(adminReceive(user))
   }
 }
 

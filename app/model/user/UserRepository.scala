@@ -6,7 +6,7 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class UserModelDb(userName: String, passwordHash: String, role: String)
+case class UserModelDb(userName: String, passwordHash: String, role: String, subscription: Boolean)
 
 @Singleton
 class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implicit ex: ExecutionContext) {
@@ -22,21 +22,36 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
 
     def role = column[String]("ROLE")
 
-    def * = (userName, passwordHash, role).mapTo[UserModelDb]
+    def subscription = column[Boolean]("SUBSCRIPTION")
+
+    def * = (userName, passwordHash, role, subscription).mapTo[UserModelDb]
 
   }
 
   protected val tableQuery = TableQuery[UserDb]
 
   def createSchema: String = tableQuery.schema.createIfNotExistsStatements.mkString("\n")
+
   def dropSchema: String = tableQuery.schema.dropIfExistsStatements.mkString("\n")
 
-  def getUser(userName: String): Future[Option[UserModelDb]] = db.run(tableQuery.filter(_.userName === userName).result.headOption)
+  def findUserQuery(userName: String): Query[UserDb, UserModelDb, Seq] = tableQuery.filter(_.userName === userName)
+
+  val emptyAction = DBIO.successful(-1)
+
+  def getUser(userName: String): Future[Option[UserModelDb]] = db.run(findUserQuery(userName).result.headOption)
+
+  def subscribe(userName: String, subscription: Boolean): Future[Int] = db.run(findUserQuery(userName).map(_.subscription).update(subscription))
 
   def listUsers: Future[Seq[UserModelDb]] = db.run(tableQuery.result)
 
-  def addUser(user: UserModelDb):Future[Int] = db.run(tableQuery += user)
+  def addUser(user: UserModelDb): Future[Int] = db.run {
+    val action = for {
+      userExists <- findUserQuery(user.userName).exists.result
+      result <- if (userExists) emptyAction else tableQuery += user
+    } yield result
+    action.transactionally
+  }
 
-  def removeUser(username: String): Future[Int] = db.run(tableQuery.filter(_.userName === username).delete)
+  def removeUser(userName: String): Future[Int] = db.run(findUserQuery(userName).delete)
 
 }

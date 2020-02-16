@@ -8,10 +8,14 @@ sealed trait UserRole
 object UserRole {
   implicit val format: Format[UserRole] = flat.oformat[UserRole]((__ \ "$type").format[String])
 }
-case object CommonUser extends UserRole
-case object Admin extends UserRole
+case object CommonUser extends UserRole {
+  override def toString: String = "user"
+}
+case object Admin extends UserRole {
+  override def toString: String = "admin"
+}
 
-case class User(username: String, role: UserRole)
+case class User(userName: String, role: UserRole, subscription: Boolean)
 object User {
   implicit val format: Format[User] = Json.format
 }
@@ -34,13 +38,15 @@ object UserToRemove {
 
 object UserMapper {
   def toDb(model: UserToAdd): UserModelDb =
-    model.into[UserModelDb].withFieldComputed(_.role, _.role match {
-      case CommonUser => "user"
-      case Admin => "admin"
-    }).transform
+    model.into[UserModelDb]
+      .withFieldComputed(_.role, _.role match {
+      case CommonUser => CommonUser.toString
+      case Admin => Admin.toString
+    })
+    .withFieldConst(_.subscription, false)
+      .transform
 
   def toUser(model: UserModelDb): User = model.into[User]
-    .withFieldRenamed(_.userName, _.username)
     .withFieldComputed(_.role, _.role match {
     case "user" => CommonUser
     case "admin" => Admin

@@ -22,22 +22,28 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
   override def receive: Receive = userReceive orElse tableReceive
 
   private def userReceive: Receive = {
-    case AuthenticateUser(userName, passwordHash) => pipeFuture(sender(), {
-      log.debug(s"Loggin $userName ph: $passwordHash")
+    case AuthenticateUser(userName, passwordHash) => pipeFuture(sender(),
       userRepository.getUser(userName).map(
         _.map(userModelDb => {
-          log.debug(s"Received ph: ${userModelDb.passwordHash} vs ${passwordHash} => are equal ${userModelDb.passwordHash == passwordHash}")
-
           if (userModelDb.passwordHash == passwordHash)
             UserAuthenticated(UserMapper.toUser(userModelDb))
           else
             UserInvalid
         })
-          .getOrElse({
-            log.debug(s"couldnt find ${userName}"); UserInvalid
-          })
+          .getOrElse {
+            log.debug(s"Couldn't find $userName")
+            UserInvalid
+          }
       )
+    )
+    case Subscribe(userName) => pipeFuture(sender(), {
+      for {
+        _ <- userRepository.subscribe(userName, subscription = true)
+        list <- tableRepository.list
+      } yield ListedTables(list.map(TableModelMapper.toMsg))
     })
+
+    case Unsubscribe(userName) => userRepository.subscribe(userName, subscription = false)
 
     case ListUsers => pipeFuture(sender(), userRepository.listUsers.map(_.map(UserMapper.toUser)))
 
@@ -52,10 +58,7 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
       pipeFuture(sender(), tableRepository.list.map(_.map(TableModelMapper.toMsg)))
 
     case AddTable(tableModel) => pipeFuture(sender(),
-      {
-        log.info(s"RECEIVED DBActor add ${tableModel}")
-        handleDbResponse(tableRepository.add(TableModelMapper.toDb(tableModel)))
-      }
+      handleDbResponse(tableRepository.add(TableModelMapper.toDb(tableModel)))
     )
 
     case RemoveTable(id) => pipeFuture(sender(),
@@ -98,7 +101,13 @@ object DBActor {
 
   final case class UserAuthenticated(user: User) extends AuthenticationResponse
 
+  case class Subscribe(userName: String)
+
+  case class Unsubscribe(userName: String)
+
   case object ListTables
+
+  final case class ListedTables(tables: Seq[TableModel])
 
   final case class AddTable(tableModel: TableModel)
 
@@ -111,6 +120,5 @@ object DBActor {
   case object OperationSucceeded extends TableOperationResult
 
   final case class OperationFailed(throwable: Throwable) extends TableOperationResult
-
 
 }

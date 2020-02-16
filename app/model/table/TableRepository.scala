@@ -17,7 +17,7 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
   import profile.api._
 
   protected class TableDb(tag: Tag) extends Table[TableModelDb](tag, "TABLE") {
-    def primaryKey = column[Long]("PRIMARY_KEY", SqlType("SERIAL"),  O.PrimaryKey, O.AutoInc)
+    def primaryKey = column[Long]("PRIMARY_KEY", SqlType("SERIAL"), O.PrimaryKey, O.AutoInc)
 
     def id = column[Long]("ID")
 
@@ -31,16 +31,26 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
 
   protected val tableQuery = TableQuery[TableDb]
 
+  val emptyAction = DBIO.successful(-1)
+
+  def findTableQuery(id: Long): Query[TableDb, TableModelDb, Seq] = tableQuery.filter(_.id === id)
+
   def createSchema: String = tableQuery.schema.createIfNotExistsStatements.mkString("\n")
 
   def dropSchema: String = tableQuery.schema.dropIfExistsStatements.mkString("\n")
 
+  def add(table: TableModelDb): Future[Int] = db.run {
+    val action = for {
+      tableExists <- findTableQuery(table.id).exists.result
+      result <- if (tableExists) emptyAction else tableQuery += table
+    } yield result
+    action.transactionally
+    tableQuery += table
+  }
 
-  def add(table: TableModelDb):Future[Int] = {println(s"Im about to add ${table}"); println((tableQuery += table).statements.mkString(" ")) ;  db.run(tableQuery += table).map(xx =>{ println("Added 1"); xx})}
+  def remove(id: Long): Future[Int] = db.run(findTableQuery(id).delete)
 
-  def remove(id: Long): Future[Int] = db.run(tableQuery.filter(_.id === id).delete)
-
-  def update(table: TableModelDb): Future[Int] = db.run(tableQuery.filter(_.id === table.id).update(table))
+  def update(table: TableModelDb): Future[Int] = db.run(findTableQuery(table.id).update(table))
 
   def list: Future[Seq[TableModelDb]] = db.run(tableQuery.result)
 

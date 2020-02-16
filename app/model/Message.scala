@@ -9,20 +9,23 @@ object Message {
   implicit val format: Format[Message] = flat.oformat[Message]((__ \ "$type").format[String])
 }
 
-//Authentication model
+//Authentication messages
 final case class login(username: String, password: String) extends Message
 case object login_failed extends Message
 case object already_logged extends Message
 final case class login_successful(user_type: String) extends Message
 
-//Pinging model
+//Pinging messages
 final case class ping(seq: Long) extends Message
 final case class pong(seq: Long) extends Message
 
-//Table CRUD model
-case object subscribe_table extends Message
-case object unsubscribe_table extends Message
+//Subscription messages
+case object subscribe_tables extends Message
+case object unsubscribe_tables extends Message
+case object already_subscribed extends Message
+case object already_unsubscribed extends Message
 
+//Update messages
 final case class table_list(tables: Seq[TableModel]) extends Message
 final case class table_added(after_id: Long, table: TableModel) extends Message
 final case class table_updated(table: TableModel) extends Message
