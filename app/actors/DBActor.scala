@@ -81,8 +81,8 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
   ): Future[TableOperationResult] = {
     future
       .map {
-        case 1    => OperationSucceeded(modification)
-        case rows => OperationFailed(modification, new Exception(s"Not expected rows abount updated [$rows]"))
+        case 1    => OperationSucceeded(modification) /* Always update one at the time */
+        case rows => OperationFailed(modification, new Exception(s"Not expected rows amount updated [$rows]"))
       }
       .recover {
         case th: Throwable => OperationFailed(modification, th)

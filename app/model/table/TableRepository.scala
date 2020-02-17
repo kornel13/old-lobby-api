@@ -57,7 +57,8 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
 
   def remove(id: Long): Future[Int] = db.run(findTableQuery(id).delete)
 
-  def update(table: TableModelDb): Future[Int] = db.run(findTableQuery(table.id).update(table))
+  def update(table: TableModelDb): Future[Int] =
+    db.run(findTableQuery(table.id).map(t => (t.name, t.participants)).update((table.name, table.participants)))
 
   def list: Future[Seq[TableModelDb]] = db.run(tableQuery.sortBy(_.sortingId).result)
 
