@@ -9,22 +9,22 @@ In order to build and run the app it's required to have installed:
 * `unzip`
 
 ### Using script
-Running the script `./start.sh`. **Run it from app root directory.** It'll run database, build the app in the production mode and start it.
+Run a script: `./start.sh`. **Run it from app root directory.** It'll run a database, build the app in the production mode and start it.
 
-App should be accessible from `http://localhost:9000`
+The app should be accessible from `http://localhost:9000`
 
 ### Alternatively 
 In case of any problems with the script the app can be run in development mode
 
-First run `docker-compose up -d`. It'll run postgres database docker. 
-In order to check it's running type `docker container ls`
+Firstly run `docker-compose up -d`. It'll run a postgres database docker. 
+In order to check if it's running, type `docker container ls`
 ![Running docker container](screenshots/docker-running.png)
 
-Next, simple run `sbt run`. 
-It'll may required to apply evolution script, thereby go `http://localhost:9000/evolution` 
+Next, simply run `sbt run`. 
+It might be required to apply evolution script, thereby go `http://localhost:9000/evolution` 
 to in the browser before websocket usage
 
-App should be accessible from `http://localhost:9000`
+The app should be accessible from `http://localhost:9000`
 ## Testing the app
 Check if the app is responsible: ` curl -I --request GET 'localhost:9000'`
 Server should respond with `HTTP/1.1 200 OK` code.
@@ -32,7 +32,9 @@ Server should respond with `HTTP/1.1 200 OK` code.
 WebSocket is accessible from `http://localhost/lobby-api`. 
 Since there isn't any client app, same origin check isn't implemented in web sockets server. 
 It allows to use the server by external clients. 
-If you use Chrome I suggest to install [Simple WebSocket Client](https://chrome.google.com/webstore/detail/simple-websocket-client/pfdhoblngboilpfeibdedpjgfnlcodoo) extension:
+If you use Chrome I suggest to install extension [Simple WebSocket Client](https://chrome.google.com/webstore/detail/simple-websocket-client/pfdhoblngboilpfeibdedpjgfnlcodoo) extension:
+
+Usage example:
 ![Websockets client](screenshots/websocket-client.PNG)
 
 ## Additional REST methods
