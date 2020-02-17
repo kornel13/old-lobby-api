@@ -7,7 +7,7 @@ import slick.sql.SqlProfile.ColumnOption.SqlType
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class TableModelDb(primaryKey: Long, id: Long, name: String, participants: Int)
+case class TableModelDb(primaryKey: Long, id: Long, name: String, participants: Int, sortingId: Long)
 
 @Singleton
 class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implicit ex: ExecutionContext) {
@@ -25,7 +25,9 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
 
     def participants = column[Int]("PARTICIPANTS")
 
-    def * = (primaryKey, id, name, participants).mapTo[TableModelDb]
+    def sortingId = column[Long]("SORTING_ID")
+
+    def * = (primaryKey, id, name, participants, sortingId).mapTo[TableModelDb]
 
   }
 
@@ -39,10 +41,16 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
 
   def dropSchema: String = tableQuery.schema.dropIfExistsStatements.mkString("\n")
 
-  def add(table: TableModelDb): Future[Int] = db.run {
+  def add(table: TableModelDb, afterId: Long): Future[Int] = db.run {
+    val sortingIfQuery = tableQuery.map(_.sortingId)
+    val addingAction = for {
+      sortingId <- if (afterId < 0) sortingIfQuery.min.result.map(_.map(_ - 1).getOrElse(table.id))
+      else sortingIfQuery.max.result.map(_.map(_ + 1).getOrElse(table.id))
+      addition <- tableQuery += table.copy(sortingId = sortingId)
+    } yield addition
     val action = for {
       tableExists <- findTableQuery(table.id).exists.result
-      result <- if (tableExists) emptyAction else tableQuery += table
+      result <- if (tableExists) emptyAction else addingAction
     } yield result
     action.transactionally
   }
@@ -51,6 +59,6 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
 
   def update(table: TableModelDb): Future[Int] = db.run(findTableQuery(table.id).update(table))
 
-  def list: Future[Seq[TableModelDb]] = db.run(tableQuery.result)
+  def list: Future[Seq[TableModelDb]] = db.run(tableQuery.sortBy(_.sortingId).result)
 
 }

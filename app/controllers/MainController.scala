@@ -41,9 +41,12 @@ class MainController @Inject()(
   }
 
   def addTable = Action.async(parse.json[model.Message]) { implicit req: Request[model.Message] =>
-    (dbActor ? DBActor.AddTable(req.body.asInstanceOf[model.add_table].table))
-      .mapTo[DBActor.TableOperationResult]
-      .map(_ => Ok(s"Added ${req.body}"))
+    {
+      val addModel = req.body.asInstanceOf[model.add_table]
+      (dbActor ? DBActor.AddTable(addModel.table, addModel.after_id))
+        .mapTo[DBActor.TableOperationResult]
+        .map(_ => Ok(s"Added ${req.body}"))
+    }
   }
 
   def removeTable = Action.async(parse.json[model.Message]) { implicit req: Request[Message] =>

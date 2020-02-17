@@ -10,7 +10,11 @@ object TableModel {
 
 object TableModelMapper {
   def toDb(model: TableModel): TableModelDb =
-    model.into[TableModelDb].withFieldConst(_.primaryKey, 0L).transform
+    model
+      .into[TableModelDb]
+      .withFieldConst(_.primaryKey, 0L)
+      .withFieldComputed(_.sortingId, _.id)
+      .transform
 
   def toMsg(model: TableModelDb): TableModel = model.transformInto[TableModel]
 }

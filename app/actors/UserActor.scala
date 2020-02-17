@@ -91,7 +91,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef) extends 
 
   private def tablesModificationReceive: Receive = {
     case add_table(after_id, table) =>
-      val resultF = (dbActorRef ? AddTable(table)).mapTo[TableOperationResult]
+      val resultF = (dbActorRef ? AddTable(table, after_id)).mapTo[TableOperationResult]
       resultF.map {
         case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(table_added(after_id, table))
         case OperationFailed(throwable) =>

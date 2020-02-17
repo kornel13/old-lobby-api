@@ -62,8 +62,8 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
       log.info("Got list tables")
       pipeFuture(sender(), tableRepository.list.map(_.map(TableModelMapper.toMsg)))
 
-    case AddTable(tableModel) =>
-      pipeFuture(sender(), handleDbResponse(tableRepository.add(TableModelMapper.toDb(tableModel))))
+    case AddTable(tableModel, afterId) =>
+      pipeFuture(sender(), handleDbResponse(tableRepository.add(TableModelMapper.toDb(tableModel), afterId)))
 
     case RemoveTable(id) => pipeFuture(sender(), handleDbResponse(tableRepository.remove(id)))
 
@@ -104,7 +104,7 @@ object DBActor {
 
   case object ListTables
   final case class ListedTables(tables: Seq[TableModel])
-  final case class AddTable(tableModel: TableModel)
+  final case class AddTable(tableModel: TableModel, afterId: Long)
   final case class RemoveTable(id: Long)
   final case class UpdateTable(tableModel: TableModel)
 
