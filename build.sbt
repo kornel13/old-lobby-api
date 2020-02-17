@@ -28,7 +28,6 @@ lazy val root = (project in file("."))
     version := "0.1",
     scalaVersion := "2.13.1",
     maintainer := "Kornel Mrozek",
-    dockerExposedPorts in Docker := Seq(9000),
     libraryDependencies ++= Seq(
       guice,
       ws,
