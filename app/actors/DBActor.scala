@@ -62,27 +62,30 @@ class DBActor @Inject()(userRepository: UserRepository, tableRepository: TableRe
       log.info("Got list tables")
       pipeFuture(sender(), tableRepository.list.map(_.map(TableModelMapper.toMsg)))
 
-    case AddTable(tableModel, afterId) =>
-      pipeFuture(sender(), handleDbResponse(tableRepository.add(TableModelMapper.toDb(tableModel), afterId)))
+    case mod @ AddTable(tableModel, afterId) =>
+      pipeFuture(sender(), handleDbResponse(mod, tableRepository.add(TableModelMapper.toDb(tableModel), afterId)))
 
-    case RemoveTable(id) => pipeFuture(sender(), handleDbResponse(tableRepository.remove(id)))
+    case mod @ RemoveTable(id) => pipeFuture(sender(), handleDbResponse(mod, tableRepository.remove(id)))
 
-    case UpdateTable(tableModel) =>
-      pipeFuture(sender(), handleDbResponse(tableRepository.update(TableModelMapper.toDb(tableModel))))
+    case mod @ UpdateTable(tableModel) =>
+      pipeFuture(sender(), handleDbResponse(mod, tableRepository.update(TableModelMapper.toDb(tableModel))))
   }
 
   private def pipeFuture[R](senderRef: ActorRef, future: => Future[R]) = {
     pipe(future) to senderRef
   }
 
-  private def handleDbResponse(future: => Future[Int]): Future[TableOperationResult] = {
+  private def handleDbResponse(
+    modification: TableModification,
+    future: => Future[Int]
+  ): Future[TableOperationResult] = {
     future
       .map {
-        case 1    => OperationSucceeded
-        case rows => OperationFailed(new Exception(s"Not expected rows abount updated [$rows]"))
+        case 1    => OperationSucceeded(modification)
+        case rows => OperationFailed(modification, new Exception(s"Not expected rows abount updated [$rows]"))
       }
       .recover {
-        case th: Throwable => OperationFailed(th)
+        case th: Throwable => OperationFailed(modification, th)
       }
   }
 
@@ -104,12 +107,14 @@ object DBActor {
 
   case object ListTables
   final case class ListedTables(tables: Seq[TableModel])
-  final case class AddTable(tableModel: TableModel, afterId: Long)
-  final case class RemoveTable(id: Long)
-  final case class UpdateTable(tableModel: TableModel)
+
+  sealed trait TableModification
+  final case class AddTable(tableModel: TableModel, afterId: Long) extends TableModification
+  final case class RemoveTable(id: Long) extends TableModification
+  final case class UpdateTable(tableModel: TableModel) extends TableModification
 
   sealed trait TableOperationResult
-  case object OperationSucceeded extends TableOperationResult
-  final case class OperationFailed(throwable: Throwable) extends TableOperationResult
+  final case class OperationSucceeded(modification: TableModification) extends TableOperationResult
+  final case class OperationFailed(modification: TableModification, throwable: Throwable) extends TableOperationResult
 
 }

@@ -90,31 +90,26 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef) extends 
   }
 
   private def tablesModificationReceive: Receive = {
-    case add_table(after_id, table) =>
-      val resultF = (dbActorRef ? AddTable(table, after_id)).mapTo[TableOperationResult]
-      resultF.map {
-        case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(table_added(after_id, table))
-        case OperationFailed(throwable) =>
-          log.error(s"Couldn't add a table: ${throwable.getMessage}")
-          wsActorRef ! addition_failed(table.id)
-      }
+    case add_table(after_id, table) => dbActorRef ! AddTable(table, after_id)
 
-    case update_table(table) =>
-      val resultF = (dbActorRef ? UpdateTable(table)).mapTo[TableOperationResult]
-      resultF.map {
-        case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(update_table(table))
-        case OperationFailed(throwable) =>
-          log.error(s"Couldn't update a table: ${throwable.getMessage}")
-          wsActorRef ! update_failed(table.id)
-      }
+    case update_table(table) => dbActorRef ! UpdateTable(table)
 
-    case remove_table(id) =>
-      val resultF = (dbActorRef ? RemoveTable(id)).mapTo[TableOperationResult]
-      resultF.map {
-        case OperationSucceeded => context.parent ! UsersSupervisor.UpdateNotification(remove_table(id))
-        case OperationFailed(throwable) =>
-          log.error(s"Couldn't remove a table: ${throwable.getMessage}")
-          wsActorRef ! removal_failed(id)
+    case remove_table(id) => dbActorRef ! RemoveTable(id)
+
+    case OperationSucceeded(modification) =>
+      val updateMessage = modification match {
+        case AddTable(tableModel, afterId) => table_added(afterId, tableModel)
+        case RemoveTable(id)               => table_removed(id)
+        case UpdateTable(tableModel)       => table_updated(tableModel)
+      }
+      context.parent ! UsersSupervisor.UpdateNotification(updateMessage)
+
+    case OperationFailed(modification, throwable) =>
+      log.error(s"Couldn't remove a table: ${throwable.getMessage}")
+      modification match {
+        case AddTable(tableModel, _) => wsActorRef ! addition_failed(tableModel.id)
+        case RemoveTable(id)         => wsActorRef ! removal_failed(id)
+        case UpdateTable(tableModel) => wsActorRef ! update_failed(tableModel.id)
       }
   }
 

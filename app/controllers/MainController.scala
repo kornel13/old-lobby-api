@@ -45,20 +45,32 @@ class MainController @Inject()(
       val addModel = req.body.asInstanceOf[model.add_table]
       (dbActor ? DBActor.AddTable(addModel.table, addModel.after_id))
         .mapTo[DBActor.TableOperationResult]
-        .map(_ => Ok(s"Added ${req.body}"))
+        .map {
+          case DBActor.OperationSucceeded(modification) => Ok(s"Added: $modification")
+          case DBActor.OperationFailed(modification, throwable) =>
+            BadRequest(s"For $modification => ${throwable.getMessage}")
+        }
     }
   }
 
   def removeTable = Action.async(parse.json[model.Message]) { implicit req: Request[Message] =>
     (dbActor ? DBActor.RemoveTable(req.body.asInstanceOf[model.remove_table].id))
       .mapTo[DBActor.TableOperationResult]
-      .map(_ => Ok(s"Removed ${req.body}"))
+      .map {
+        case DBActor.OperationSucceeded(modification) => Ok(s"Removed: $modification")
+        case DBActor.OperationFailed(modification, throwable) =>
+          BadRequest(s"For $modification => ${throwable.getMessage}")
+      }
   }
 
   def updateTable = Action.async(parse.json[model.Message]) { implicit req: Request[Message] =>
     (dbActor ? DBActor.UpdateTable(req.body.asInstanceOf[model.update_table].table))
       .mapTo[DBActor.TableOperationResult]
-      .map(_ => Ok(s"Added ${req.body}"))
+      .map {
+        case DBActor.OperationSucceeded(modification) => Ok(s"Updated: $modification")
+        case DBActor.OperationFailed(modification, throwable) =>
+          BadRequest(s"For $modification => ${throwable.getMessage}")
+      }
   }
 
   ///////////////////////////////////////////
