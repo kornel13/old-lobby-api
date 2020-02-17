@@ -20,8 +20,9 @@ First run `docker-compose up -d`. It'll run postgres database docker.
 In order to check it's running type `docker container ls`
 ![Running docker container](screenshots/docker-running.png)
 
-Next, simple run `sbt run -Dconfig.resource=prod-application.conf`. 
-If you tun without production config it'll be required to apply evolution script
+Next, simple run `sbt run`. 
+It'll may required to apply evolution script, thereby go `http://localhost:9000/evolution` 
+to in the browser before websocket usage
 
 App should be accessible from `http://localhost:9000`
 ## Testing the app

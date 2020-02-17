@@ -1,6 +1,6 @@
 package actors
 
-import actors.UserActor.SendUpdateToSocket
+import actors.UserActor.{SendUpdateToSocket, SocketClosedSuccessfully, SocketClosedWithFailure}
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern._
 import akka.util.Timeout
@@ -25,7 +25,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef) extends 
   }
 
   private def anonymousUserReceive: Receive =
-    pingPongReceive.orElse(loggingReceive).orElse(unauthorizedReceive)
+    pingPongReceive.orElse(loggingReceive).orElse(unauthorizedReceive).orElse(socketFlowReceive)
 
   private def adminReceive(user: User): Receive =
     pingPongReceive
@@ -33,6 +33,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef) extends 
       .orElse(subscriptionReceive(user))
       .orElse(updateReceive(user))
       .orElse(tablesModificationReceive)
+      .orElse(socketFlowReceive)
 
   private def loggedUserReceive(user: User): Receive =
     pingPongReceive
@@ -40,6 +41,7 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef) extends 
       .orElse(subscriptionReceive(user))
       .orElse(updateReceive(user))
       .orElse(unauthorizedReceive)
+      .orElse(socketFlowReceive)
 
   private def subscriptionReceive(user: User): Receive = {
     case _: subscribe_tables.type =>
@@ -113,6 +115,13 @@ class UserActor(id: String, wsActorRef: ActorRef, dbActorRef: ActorRef) extends 
       }
   }
 
+  private def socketFlowReceive: Receive = {
+    case SocketClosedSuccessfully => context.stop(self)
+    case SocketClosedWithFailure(throwable: Throwable) =>
+      log.error(s"Soxket closed with a failure ${throwable.getMessage}")
+      context.stop(self)
+  }
+
   private def setBehavior(user: User): Unit = user.role match {
     case CommonUser => context.become(loggedUserReceive(user))
     case Admin      => context.become(adminReceive(user))
@@ -124,5 +133,7 @@ object UserActor {
     Props(new UserActor(id, wsActorRef, supervisorActorRef))
 
   case class SendUpdateToSocket(update: Message)
+  case object SocketClosedSuccessfully
+  case class SocketClosedWithFailure(throwable: Throwable)
 
 }

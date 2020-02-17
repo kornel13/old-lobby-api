@@ -16,11 +16,11 @@ class EvolutionRepository @Inject()(userRepository: UserRepository, tableReposit
     s"""
        |# --- !Ups
        |
-       |${create.mkString(";\n")}
+       |${create.mkString("", ";\n", ";")}
        |
        |# --- !Downs
        |
-       |${drop.mkString(";\n")}
+       |${drop.mkString("", ";\n", ";")}
        |
        |""".stripMargin
 }

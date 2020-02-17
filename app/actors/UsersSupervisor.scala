@@ -1,6 +1,6 @@
 package actors
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Status}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.event.LoggingReceive
 import akka.stream.scaladsl._
 import akka.stream.{CompletionStrategy, Materializer, OverflowStrategy}
@@ -29,13 +29,23 @@ class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef)(
     case NewWebSocketConnection(id) =>
       val name = s"userActor-$id"
       log.info(s"Setting up an user actor $name")
-      val (flow, _) = customActorRefFlow(name, out => UserActor.props(id, out, dbActor))
+      val (flow, childUserActorRef) = customActorRefFlow(name, out => UserActor.props(id, out, dbActor))
+      context.watch(childUserActorRef)
       log.debug(s"Supervisor children: ${context.children.map(_.path.toString).mkString("[", ", ", "]")}")
       sender() ! flow
 
     case UpdateNotification(update) => context.children.foreach(_ ! UserActor.SendUpdateToSocket(update))
+
+    case Terminated(userActorRef) =>
+      log.debug(s"Supervisor children: ${context.children.map(_.path.toString).mkString("[", ", ", "]")}")
+      log.info(s"${userActorRef.path} terminated")
   }
 
+  /**
+    * Modified implementation of play.api.libs.streams.ActorFlow.actorRef
+    * It removes additional parent actor and returns child actorRef
+    * and adds custom completion and failure message types
+    */
   private def customActorRefFlow[In, Out](
     actorName: String,
     props: ActorRef => Props,
@@ -43,12 +53,10 @@ class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef)(
     overflowStrategy: OverflowStrategy = OverflowStrategy.dropNew
   )(implicit mat: Materializer): (Flow[In, Out, _], ActorRef) = {
     val completionMatcher: PartialFunction[Any, CompletionStrategy] = {
-      case akka.actor.Status.Success(s: CompletionStrategy) => s
-      case akka.actor.Status.Success(_)                     => CompletionStrategy.draining
-      case akka.actor.Status.Success                        => CompletionStrategy.draining
+      case UserActor.SocketClosedSuccessfully => CompletionStrategy.draining
     }
     val failureMatcher: PartialFunction[Any, Throwable] = {
-      case akka.actor.Status.Failure(cause) => cause
+      case UserActor.SocketClosedWithFailure(cause) => cause
     }
 
     val (outActor, publisher) = Source
@@ -62,8 +70,8 @@ class UsersSupervisor @Inject()(@Named("databaseActor") dbActor: ActorRef)(
       Flow.fromSinkAndSource(
         Sink.actorRef(
           ref = childActorRef,
-          onCompleteMessage = Status.Success(()),
-          onFailureMessage = throwable => Status.Failure(throwable)
+          onCompleteMessage = UserActor.SocketClosedSuccessfully,
+          onFailureMessage = throwable => UserActor.SocketClosedWithFailure(throwable)
         ),
         Source.fromPublisher(publisher)
       ),

@@ -116,6 +116,7 @@ class UserActorSpec
       dbActorTestProbe.reply(DBActor.OperationFailed(DBActor.RemoveTable(removeTableId), new Exception("failed")))
       wsActorProbe.expectMsg(removal_failed(removeTableId))
     }
+
   }
 
   object UserActorSpec {
@@ -150,7 +151,7 @@ class UserActorSpec
       val adminUserActor = TestActorRef[UserActor](
         Props(new UserActor("id", wsActorProbe.ref, dbActorTestProbe.ref)),
         supervisorActorProbe.ref,
-        "loggedUser"
+        "adminUser"
       )
       val role = Admin
       val user = User("admin", role, subscription = subscribed)

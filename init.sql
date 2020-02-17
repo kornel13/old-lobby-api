@@ -3,5 +3,3 @@ create table if not exists "TABLE" ("PRIMARY_KEY" SERIAL NOT NULL PRIMARY KEY,"I
 
 insert into "USERS" ("USER_NAME", "PASS_HASH", "ROLE", "SUBSCRIPTION") VALUES ('admin', 'd82494f05d6917ba02f7aaa29689ccb444bb73f20380876cb05d1f37537b7892', 'admin', false);
 insert into "USERS" ("USER_NAME", "PASS_HASH", "ROLE", "SUBSCRIPTION") VALUES ('user', 'e172c5654dbc12d78ce1850a4f7956ba6e5a3d2ac40f0925fc6d691ebb54f6bf', 'user', false);
-
- insert into "TABLE" ("PRIMARY_KEY", "ID", "NAME", "PARTICIPANTS", "SORTING_ID") values (1,1,'table - Mission Impossible',10,1);

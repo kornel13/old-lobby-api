@@ -41,6 +41,13 @@ class TableRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implic
 
   def dropSchema: String = tableQuery.schema.dropIfExistsStatements.mkString("\n")
 
+  /**
+    * I haven't got how to apply 'after_id' parameter if id is explicitly passed as an argument. Assumed solution
+    * Since id is passed by a caller, afterId is used to determine order in table list -> internally sortingId
+    * if after_id is negative the element is added in the beginning of the list (element calculated sorting_id is
+    * decremented minimal existing one) otherwise it's added after last elemnt ( sorting_id calculated analogically)
+    *
+    */
   def add(table: TableModelDb, afterId: Long): Future[Int] = db.run {
     val sortingIfQuery = tableQuery.map(_.sortingId)
     val addingAction = for {

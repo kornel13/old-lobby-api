@@ -35,7 +35,6 @@ class MainController @Inject()(
   }
   implicit val timeout: Timeout = Timeout(1000 milliseconds)
 
-  ////////////DEBUG //////////////////////////
   def listTables = Action.async { _ =>
     (dbActor ? DBActor.ListTables).mapTo[Seq[model.table.TableModel]].map(tables => Ok(Json.toJson(tables)))
   }
@@ -72,8 +71,6 @@ class MainController @Inject()(
           BadRequest(s"For $modification => ${throwable.getMessage}")
       }
   }
-
-  ///////////////////////////////////////////
 
   def listUsers = Action.async { _ =>
     (dbActor ? DBActor.ListUsers).mapTo[Seq[User]].map(users => Ok(Json.toJson(users)))
