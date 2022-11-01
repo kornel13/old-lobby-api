@@ -24,7 +24,7 @@ resolvers in ThisBuild += Resolver.jcenterRepo
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
   .settings(
-    name := "EvolutionGamingTest",
+    name := "LobbyAPI",
     version := "0.1",
     scalaVersion := "2.13.1",
     maintainer := "Kornel Mrozek",

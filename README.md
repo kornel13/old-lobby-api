@@ -1,4 +1,4 @@
-#Evolution Gaming Task
+#Lobby API
 JSON-based Lobby API protocol served over WebSocket 
 based on Play Framework and Akka
 ## Building & running the app
